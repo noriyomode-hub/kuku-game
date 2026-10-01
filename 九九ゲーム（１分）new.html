@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>九九チャレンジ完全版</title>
+
+<style>
+body{
+    font-family:sans-serif;
+    background:#f0f8ff;
+    text-align:center;
+    margin:0;
+    padding:10px;
+}
+
+h1{
+    color:#0066cc;
+    font-size:42px;
+    margin:10px;
+}
+
+#menu{
+    margin-top:20px;
+}
+
+#menu button{
+    display:block;
+    width:80%;
+    max-width:700px;
+    margin:15px auto;
+    padding:20px;
+    font-size:30px;
+}
+
+button{
+    font-size:30px;
+    padding:15px 30px;
+    border:none;
+    border-radius:10px;
+    background:#4CAF50;
+    color:white;
+}
+
+#game{
+    display:none;
+}
+
+#timer{
+    font-size:50px;
+    color:red;
+    font-weight:bold;
+}
+
+#question{
+    font-size:80px;
+    margin:20px;
+}
+
+#answer{
+    font-size:50px;
+    width:220px;
+    text-align:center;
+}
+
+#score{
+    font-size:30px;
+    margin-top:15px;
+}
+
+#result{
+    display:none;
+}
+
+.resultContainer{
+    display:flex;
+    justify-content:space-around;
+    align-items:flex-start;
+    gap:20px;
+    flex-wrap:wrap;
+}
+
+.leftBox{
+    width:45%;
+    min-width:320px;
+}
+
+.rightBox{
+    width:45%;
+    min-width:320px;
+    text-align:left;
+    background:white;
+    border:3px solid #cccccc;
+    border-radius:10px;
+    padding:15px;
+}
+
+.rank{
+    font-size:48px;
+    font-weight:bold;
+    color:#ff6600;
+    animation:blink 1s infinite;
+    white-space:nowrap;
+    display:inline-block;
+    border:5px solid gold;
+    border-radius:20px;
+    padding:15px 25px;
+    background:#fffde7;
+}
+
+.master{
+    font-size:58px;
+    font-weight:bold;
+    white-space:nowrap;
+    display:inline-block;
+    border:5px solid gold;
+    border-radius:20px;
+    padding:15px 25px;
+    background:#fffde7;
+    animation:rainbow 1s infinite;
+}
+
+@keyframes blink{
+    0%{opacity:1;}
+    50%{opacity:0.2;}
+    100%{opacity:1;}
+}
+
+@keyframes rainbow{
+    0%{color:red;}
+    20%{color:orange;}
+    40%{color:gold;}
+    60%{color:green;}
+    80%{color:blue;}
+    100%{color:purple;}
+}
+
+#mistakes{
+    font-size:24px;
+}
+
+@media(max-width:900px){
+    .leftBox,.rightBox{
+        width:100%;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<h1>九九チャレンジ</h1>
+
+<div id="menu">
+    <h2>チャレンジするグループを選ぼう！</h2>
+
+    <button onclick="startGame([2,3,5])">
+        ２・３・５の段
+    </button>
+
+    <button onclick="startGame([4,6,7])">
+        ４・６・７の段
+    </button>
+
+    <button onclick="startGame([8,9,1])">
+        ８・９・１の段
+    </button>
+</div>
+
+<div id="game">
+
+    <div id="timer">1:00</div>
+
+    <div id="question"></div>
+
+    <input type="number" id="answer">
+
+    <br><br>
+
+    <button onclick="checkAnswer()">こたえる</button>
+
+    <div id="score">
+        正解：<span id="correct">0</span>問
+    </div>
+
+</div>
+
+<div id="result">
+
+    <div class="resultContainer">
+
+        <div class="leftBox">
+
+            <h2>しゅうりょう！</h2>
+
+            <p style="font-size:36px;">
+                正解数：
+                <span id="finalCorrect"></span>問
+            </p>
+
+            <p style="font-size:36px;">
+                正答率：
+                <span id="accuracy"></span>%
+            </p>
+
+            <div id="rank"></div>
+
+        </div>
+
+        <div class="rightBox">
+
+            <h2>まちがえた問題</h2>
+
+            <div id="mistakes"></div>
+
+            <br>
+
+            <button onclick="retryMistakes()">
+                まちがえた問題だけチャレンジ
+            </button>
+
+            <br><br>
+
+            <button onclick="location.reload()">
+                もう一回チャレンジ
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+let questions = [];
+let currentIndex = 0;
+let correctCount = 0;
+let mistakes = [];
+let timeLeft = 60;
+let timer;
+
+function createQuestions(dans){
+
+    questions = [];
+
+    for(let d of dans){
+
+        for(let i=1;i<=9;i++){
+
+            questions.push({
+                q:`${d} × ${i}`,
+                a:d*i
+            });
+
+        }
+
+    }
+
+    for(let i=questions.length-1;i>0;i--){
+
+        let r=Math.floor(Math.random()*(i+1));
+
+        [questions[i],questions[r]]=
+        [questions[r],questions[i]];
+
+    }
+}
+
+function startGame(dans){
+
+    document.getElementById("menu").style.display="none";
+    document.getElementById("result").style.display="none";
+    document.getElementById("game").style.display="block";
+
+    createQuestions(dans);
+
+    currentIndex=0;
+    correctCount=0;
+    mistakes=[];
+
+    document.getElementById("correct").textContent="0";
+
+    timeLeft=60;
+
+    showQuestion();
+
+    clearInterval(timer);
+
+    document.getElementById("timer").textContent="1:00";
+
+    timer=setInterval(function(){
+
+        timeLeft--;
+
+        document.getElementById("timer").textContent=
+            "0:"+(timeLeft<10?"0":"")+timeLeft;
+
+        if(timeLeft<=0){
+
+            endGame();
+
+        }
+
+    },1000);
+
+    document.getElementById("answer").focus();
+}
+
+function showQuestion(){
+
+    if(currentIndex>=questions.length){
+
+        endGame();
+        return;
+
+    }
+
+    document.getElementById("question").textContent=
+        questions[currentIndex].q + " = ?";
+
+    document.getElementById("answer").value="";
+}
+
+function checkAnswer(){
+
+    if(currentIndex>=questions.length) return;
+
+    const txt=document.getElementById("answer").value;
+
+    if(txt==="") return;
+
+    const userAnswer=parseInt(txt);
+
+    const correctAnswer=
+        questions[currentIndex].a;
+
+    if(userAnswer===correctAnswer){
+
+        correctCount++;
+
+        document.getElementById("correct").textContent=
+            correctCount;
+
+    }else{
+
+        mistakes.push({
+            q:questions[currentIndex].q,
+            a:correctAnswer,
+            your:userAnswer
+        });
+
+    }
+
+    currentIndex++;
+
+    showQuestion();
+
+    document.getElementById("answer").focus();
+}
+
+function endGame(){
+
+    clearInterval(timer);
+
+    document.getElementById("game").style.display="none";
+    document.getElementById("result").style.display="block";
+
+    const answered=
+        correctCount + mistakes.length;
+
+    let accuracy=0;
+
+    if(answered>0){
+
+        accuracy=
+            (correctCount/answered*100).toFixed(1);
+
+    }
+
+    document.getElementById("finalCorrect").textContent=
+        correctCount;
+
+    document.getElementById("accuracy").textContent=
+        accuracy;
+
+    const rankElement=
+        document.getElementById("rank");
+
+    rankElement.className="rank";
+
+    if(correctCount===27){
+
+        rankElement.textContent="🏆 九九マスター";
+        rankElement.className="master";
+
+    }else if(correctCount>=24){
+
+        rankElement.textContent="🌟 すごいぞ！";
+
+    }else if(correctCount>=20){
+
+        rankElement.textContent="😊 がんばったね！";
+
+    }else{
+
+        rankElement.textContent="💪 またチャレンジしてね！";
+    }
+
+    if(mistakes.length===0){
+
+        document.getElementById("mistakes").innerHTML=
+            "ぜんぶ正解！すばらしい！";
+
+    }else{
+
+        document.getElementById("mistakes").innerHTML=
+            mistakes.map(m =>
+                "・"+m.q+" = "+m.a+
+                " （あなた："+m.your+"）"
+            ).join("<br>");
+    }
+}
+
+function retryMistakes(){
+
+    if(mistakes.length===0){
+
+        alert("まちがえた問題はありません！");
+        return;
+    }
+
+    const retryList =
+        mistakes.map(m => ({
+            q:m.q,
+            a:m.a
+        }));
+
+    questions = retryList;
+
+    currentIndex = 0;
+    correctCount = 0;
+
+    document.getElementById("correct").textContent="0";
+
+    mistakes = [];
+
+    document.getElementById("result").style.display="none";
+    document.getElementById("game").style.display="block";
+
+    clearInterval(timer);
+
+    timeLeft = 60;
+
+    document.getElementById("timer").textContent="1:00";
+
+    showQuestion();
+
+    timer=setInterval(function(){
+
+        timeLeft--;
+
+        document.getElementById("timer").textContent=
+            "0:"+(timeLeft<10?"0":"")+timeLeft;
+
+        if(timeLeft<=0){
+
+            endGame();
+
+        }
+
+    },1000);
+
+    document.getElementById("answer").focus();
+}
+
+document.getElementById("answer").addEventListener(
+"keydown",
+function(e){
+
+    if(e.key==="Enter"){
+
+        checkAnswer();
+
+    }
+
+}
+);
+
+</script>
+
+</body>
+</html>
